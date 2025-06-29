@@ -1,4 +1,4 @@
-Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为 在Bestdori中 能导入的 JSON 格式的 Python 工具。
+Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为在 Bestdori 中能导入的 JSON 格式的 Python 工具。
 
 ## 功能介绍
 
