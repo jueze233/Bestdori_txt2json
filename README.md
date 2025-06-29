@@ -1,10 +1,11 @@
-Bestdori_txt2json 是一个用于将 Bestdori 项目中的 TXT 格式数据转换为 JSON 格式的 Python 工具。
+Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为 在Bestdori中 能导入的 JSON 格式的 Python 工具。
 
 ## 功能介绍
 
-- 支持将 Bestdori 导出的 TXT 数据批量转换为标准 JSON 文件
-- 自动处理文本编码
-- 可自定义输入输出路径
+- 支持将 TXT 数据批量转换为标准 JSON 文件
+- 自动去除对话中开头和结尾的引号
+- 根据说话人的角色名字自动绑定相应的角色图标（Mujica成员使用的是ppp的角色图标）
+- GUI界面
 
 ## 安装方法
 
