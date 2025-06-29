@@ -32,9 +32,5 @@ Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为在 Bestdori
 
 
 
-## 许可证
-
-本项目采用 MIT 许可证。
-
 ---
 
