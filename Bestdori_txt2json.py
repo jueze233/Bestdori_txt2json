@@ -1,4 +1,4 @@
-# --- START OF FILE Bestdori_txt2json.py (MODIFIED) ---
+# --- START OF FILE Bestdori_txt2json.py (WITH SHORTCUTS) ---
 
 import json
 import re
@@ -13,7 +13,7 @@ import yaml
 import threading
 import sys
 
-# (日志、数据类、ConfigManager、解析器、QuoteHandler、TextConverter等核心逻辑部分... 无需任何修改)
+# (核心逻辑部分，从日志到 TextConverter，都无需任何修改)
 # --- [此处省略未修改的核心逻辑代码，与您提供的版本完全相同] ---
 
 # 配置日志
@@ -68,50 +68,82 @@ class ConfigManager:
         """加载配置文件"""
         default_config = {
             "character_mapping": {
+                # Poppin'Party
                 "户山香澄": [1], "花园多惠": [2], "牛込里美": [3], "山吹沙绫": [4], "市谷有咲": [5],
+                # Afterglow
                 "美竹兰": [6], "青叶摩卡": [7], "上原绯玛丽": [8], "宇田川巴": [9], "羽泽鸫": [10],
+                # Hello, Happy World!
                 "弦卷心": [11], "濑田薰": [12], "北泽育美": [13], "松原花音": [14], "奥泽美咲": [15],
+                # Pastel*Palettes
                 "丸山彩": [16], "冰川日菜": [17], "白鹭千圣": [18], "大和麻弥": [19], "若宫伊芙": [20],
+                # Roselia
                 "凑友希那": [21], "冰川纱夜": [22], "今井莉莎": [23], "宇田川亚子": [24], "白金燐子": [25],
+                # Morfonica
                 "仓田真白": [26], "桐谷透子": [27], "广町七深": [28], "二叶筑紫": [29], "八潮瑠唯": [30],
+                # RAISE A SUILEN
                 "LAYER": [31], "LOCK": [32], "MASKING": [33], "PAREO": [34], "CHU²": [35],
+                # mujica
                 "丰川祥子": [1], "若叶睦": [2], "三角初华": [3], "八幡海铃": [4], "祐天寺若麦": [5],
+                # MyGo
                 "高松灯": [36], "千早爱音": [37], "要乐奈": [38], "长崎素世": [39], "椎名立希": [40]
             },
-            "parsing": { "max_speaker_name_length": 50, "default_narrator_name": " " },
-            "patterns": { "speaker_pattern": r'^([\w\s]+)\s*[：:]\s*(.*)$' },
+            "parsing": {
+                "max_speaker_name_length": 50,
+                "max_short_speaker_name_length": 6,
+                "default_narrator_name": " "
+            },
+            "patterns": {
+                "speaker_pattern": r'^([\w\s]+)\s*[：:]\s*(.*)$'
+            },
             "quotes": {
-                "quote_pairs": {'"': '"', '“': '”', "'": "'", '‘': '’', "「": "」", "『": "』"},
+                "quote_pairs": {
+                    '"': '"', '“': '”', "'": "'", '‘': '’', "「": "」", "『": "』"
+                },
                 "quote_categories": {
-                    "中文引号 “...”": ["“", "”"], "中文单引号 ‘...’": ["‘", "’"],
-                    "日文引号 「...」": ["「", "」"], "日文书名号 『...』": ["『", "』"],
-                    "英文双引号 \"...\"": ['"', '"'], "英文单引号 '...'": ["'", "'"]
+                    "中文引号 “...”": ["“", "”"],
+                    "中文单引号 ‘...’": ["‘", "’"],
+                    "日文引号 「...」": ["「", "」"],
+                    "日文书名号 『...』": ["『", "』"],
+                    "英文双引号 \"...\"": ['"', '"'],
+                    "英文单引号 '...'": ["'", "'"]
                 }
             }
         }
+        
         if not self.config_path.exists():
             self._save_config(default_config)
             return default_config
+        
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 loaded_config = yaml.safe_load(f) or default_config
                 if "quote_categories" not in loaded_config.get("quotes", {}):
-                    loaded_config["quotes"] = default_config["quotes"]
+                    logger.warning("旧的配置文件缺少'quote_categories'，将从默认配置中添加。")
+                    loaded_config["quotes"]["quote_categories"] = default_config["quotes"]["quote_categories"]
                     self._save_config(loaded_config)
                 return loaded_config
         except Exception as e:
-            logger.warning(f"配置文件加载失败: {e}"); return default_config
+            logger.warning(f"配置文件加载失败，使用默认配置: {e}")
+            return default_config
     
     def _save_config(self, config: Dict[str, Any]):
         try:
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
-        except Exception as e: logger.error(f"配置文件保存失败: {e}")
+        except Exception as e:
+            logger.error(f"配置文件保存失败: {e}")
     
-    def get_character_mapping(self) -> Dict[str, List[int]]: return self.config.get("character_mapping", {})
-    def get_parsing_config(self) -> Dict[str, Any]: return self.config.get("parsing", {})
-    def get_patterns(self) -> Dict[str, str]: return self.config.get("patterns", {})
-    def get_quotes_config(self) -> Dict[str, Any]: return self.config.get("quotes", {})
+    def get_character_mapping(self) -> Dict[str, List[int]]:
+        return self.config.get("character_mapping", {})
+    
+    def get_parsing_config(self) -> Dict[str, Any]:
+        return self.config.get("parsing", {})
+    
+    def get_patterns(self) -> Dict[str, str]:
+        return self.config.get("patterns", {})
+    
+    def get_quotes_config(self) -> Dict[str, Any]:
+        return self.config.get("quotes", {})
 
 
 class DialogueParser(ABC):
@@ -203,19 +235,16 @@ class TextConverter:
         return json.dumps(asdict(result), ensure_ascii=False, indent=2)
 
 class ModernConverterGUI:
-    """现代化的GUI界面"""
-    
     def __init__(self):
         self.config_manager = ConfigManager()
         self.converter = TextConverter(self.config_manager)
-        # --- 修改1：初始化用于存储自定义引号信息的列表 ---
         self.custom_quote_vars = []
         self.setup_gui()
     
     def setup_gui(self):
         self.root = tk.Tk()
-        self.root.title("文本转JSON转换器 v2.6 (自定义引号)")
-        self.root.geometry("800x700") # 稍微增加高度以容纳新控件
+        self.root.title("文本转JSON转换器 v2.7 (快捷键支持)")
+        self.root.geometry("800x700")
         
         style = ttk.Style()
         style.theme_use('clam')
@@ -225,7 +254,7 @@ class ModernConverterGUI:
         self.root.columnconfigure(0, weight=1); self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         
-        # --- (输入/输出/旁白名称部分无变化) ---
+        # ... (GUI布局代码无变化) ...
         ttk.Label(main_frame, text="输入文本文件:").grid(row=0, column=0, sticky="w", pady=5)
         self.input_filepath_var = tk.StringVar()
         input_frame = ttk.Frame(main_frame)
@@ -233,7 +262,6 @@ class ModernConverterGUI:
         input_frame.columnconfigure(0, weight=1)
         ttk.Entry(input_frame, textvariable=self.input_filepath_var).grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(input_frame, text="浏览...", command=self.browse_input_file).grid(row=0, column=1)
-        
         ttk.Label(main_frame, text="输出JSON文件:").grid(row=1, column=0, sticky="w", pady=5)
         self.output_filepath_var = tk.StringVar()
         output_frame = ttk.Frame(main_frame)
@@ -241,24 +269,17 @@ class ModernConverterGUI:
         output_frame.columnconfigure(0, weight=1)
         ttk.Entry(output_frame, textvariable=self.output_filepath_var).grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(output_frame, text="浏览...", command=self.browse_output_file).grid(row=0, column=1)
-        
         ttk.Label(main_frame, text="旁白名称:").grid(row=2, column=0, sticky="w", pady=5)
         self.narrator_name_var = tk.StringVar(value=" ")
         ttk.Entry(main_frame, textvariable=self.narrator_name_var).grid(row=2, column=1, sticky=(tk.W, tk.E), pady=5)
-        
-        # --- 修改2：调整UI布局，添加自定义引号控件 ---
         self.quote_frame = ttk.LabelFrame(main_frame, text="引号处理选项", padding="10")
         self.quote_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
-        self.quote_frame.columnconfigure(0, weight=1) # 让内部网格可伸缩
-
-        # 预设引号部分
+        self.quote_frame.columnconfigure(0, weight=1)
         preset_frame = ttk.Frame(self.quote_frame)
         preset_frame.grid(row=0, column=0, sticky="ew")
-        
         self.quote_category_vars = {}
         quotes_config = self.config_manager.get_quotes_config()
         quote_categories = quotes_config.get("quote_categories", {})
-        
         self.quote_col_count = 0
         for category_name in quote_categories.keys():
             var = tk.BooleanVar(value=True)
@@ -266,31 +287,19 @@ class ModernConverterGUI:
             chk.pack(side=tk.LEFT, padx=5, pady=5)
             self.quote_category_vars[category_name] = var
             self.quote_col_count += 1
-
-        # 分隔线
         ttk.Separator(self.quote_frame, orient='horizontal').grid(row=1, column=0, sticky='ew', pady=10)
-
-        # 自定义引号部分
         custom_frame = ttk.Frame(self.quote_frame)
         custom_frame.grid(row=2, column=0, sticky="ew")
-
         ttk.Label(custom_frame, text="添加自定义引号对:").pack(side=tk.LEFT, padx=(0, 5))
-        
         self.custom_open_quote_var = tk.StringVar()
         open_entry = ttk.Entry(custom_frame, textvariable=self.custom_open_quote_var, width=5)
         open_entry.pack(side=tk.LEFT, padx=5)
-
         self.custom_close_quote_var = tk.StringVar()
         close_entry = ttk.Entry(custom_frame, textvariable=self.custom_close_quote_var, width=5)
         close_entry.pack(side=tk.LEFT, padx=5)
-        
         ttk.Button(custom_frame, text="➕ 添加", command=self.add_custom_quote).pack(side=tk.LEFT, padx=5)
-
-        # 动态添加的自定义引号将显示在这里
         self.custom_quotes_display_frame = ttk.Frame(self.quote_frame)
         self.custom_quotes_display_frame.grid(row=3, column=0, sticky="ew", pady=(10, 0))
-        
-        # --- (进度条、按钮、状态栏、日志等部分无变化) ---
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
@@ -300,7 +309,7 @@ class ModernConverterGUI:
         ttk.Button(button_frame, text="预览结果", command=self.preview_result).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="配置管理", command=self.open_config_manager).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="测试引号", command=self.test_quote_processing).pack(side=tk.LEFT, padx=5)
-        self.status_var = tk.StringVar(value="就绪 - 支持自定义引号")
+        self.status_var = tk.StringVar(value="就绪 - F1查看帮助")
         ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w").grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
         log_frame = ttk.LabelFrame(main_frame, text="转换日志", padding="5")
         log_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
@@ -311,51 +320,62 @@ class ModernConverterGUI:
         self.log_text.configure(yscrollcommand=scrollbar.set)
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # --- 修改1：在GUI设置的最后调用快捷键设置函数 ---
+        self.setup_shortcuts()
 
-    # --- 修改3：实现动态添加自定义引号的函数 ---
+    # --- 新增2：定义快捷键设置函数 ---
+    def setup_shortcuts(self):
+        """设置快捷键"""
+        self.root.bind('<Control-o>', lambda e: self.browse_input_file())
+        self.root.bind('<Control-s>', lambda e: self.browse_output_file())
+        self.root.bind('<F5>', lambda e: self.start_conversion_threaded())
+        self.root.bind('<F1>', lambda e: self.show_help())
+        # 在macOS上，Control-s通常是保存，Command-s才是。可以添加兼容性绑定
+        # self.root.bind('<Command-o>', lambda e: self.browse_input_file())
+        # self.root.bind('<Command-s>', lambda e: self.browse_output_file())
+    
+    # --- 新增3：定义帮助信息显示函数 ---
+    def show_help(self):
+        """显示帮助和快捷键信息"""
+        help_title = "帮助 / 快捷键"
+        help_message = """
+文本转JSON转换器 v2.7
+
+功能简介:
+本工具用于将特定格式的对话文本转换为JSON文件，
+支持多种引号移除和自定义角色配置。
+
+快捷键列表:
+  - Ctrl + O:   打开文件选择框，选择输入文件。
+  - Ctrl + S:   打开文件保存框，指定输出文件。
+  - F5:         开始转换当前指定的文件。
+  - F1:         显示此帮助信息。
+"""
+        messagebox.showinfo(help_title, help_message)
+
     def add_custom_quote(self):
-        open_char = self.custom_open_quote_var.get()
-        close_char = self.custom_close_quote_var.get()
-
-        if not open_char or not close_char:
-            messagebox.showerror("错误", "起始和结束符号都不能为空！")
-            return
-        
-        # 创建并存储新的引号变量和字符
-        var = tk.BooleanVar(value=True)
-        self.custom_quote_vars.append((var, open_char, close_char))
-        
-        # 在界面上创建新的复选框
+        open_char = self.custom_open_quote_var.get(); close_char = self.custom_close_quote_var.get()
+        if not open_char or not close_char: return messagebox.showerror("错误", "起始和结束符号都不能为空！")
+        var = tk.BooleanVar(value=True); self.custom_quote_vars.append((var, open_char, close_char))
         category_name = f"{open_char}...{close_char}"
         chk = ttk.Checkbutton(self.custom_quotes_display_frame, text=category_name, variable=var)
-        # 使用 pack 让它们自动排列
         chk.pack(side=tk.LEFT, padx=5, pady=5)
-        
-        # 清空输入框
-        self.custom_open_quote_var.set("")
-        self.custom_close_quote_var.set("")
+        self.custom_open_quote_var.set(""); self.custom_close_quote_var.set("")
 
-    # --- 修改4：修改 _get_selected_quote_pairs 以包含自定义引号 ---
     def _get_selected_quote_pairs(self) -> Dict[str, str]:
         selected_pairs = {}
         quotes_config = self.config_manager.get_quotes_config()
         quote_categories = quotes_config.get("quote_categories", {})
-
-        # 1. 收集预设的引号
         for category_name, var in self.quote_category_vars.items():
             if var.get():
                 quote_chars = quote_categories.get(category_name)
                 if quote_chars and len(quote_chars) == 2:
                     selected_pairs[quote_chars[0]] = quote_chars[1]
-        
-        # 2. 收集自定义的引号
         for var, open_char, close_char in self.custom_quote_vars:
-            if var.get():
-                selected_pairs[open_char] = close_char
-                
+            if var.get(): selected_pairs[open_char] = close_char
         return selected_pairs
     
-    # --- (其余所有方法，如 start_conversion, preview_result 等，都无需修改) ---
     def browse_input_file(self):
         filename = filedialog.askopenfilename(title="选择输入文本文件", filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")])
         if filename: self.input_filepath_var.set(filename)
@@ -450,7 +470,7 @@ class ModernConverterGUI:
     def run(self):
         self.root.mainloop()
 
-# (main 函数和 if __name__ == "__main__": 部分无变化)
+
 def main():
     try:
         app = ModernConverterGUI()
@@ -463,6 +483,7 @@ def main():
             try:
                 root = tk.Tk(); root.withdraw(); messagebox.showerror("严重错误", f"应用程序启动失败: {str(e)}")
             except: pass
+
 
 if __name__ == "__main__":
     main()
