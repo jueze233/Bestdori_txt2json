@@ -22,7 +22,8 @@ Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为在 Bestdori
 
 ## 使用方法
 
-图形化界面，直接使用
+```bash
+python Bestdori_txt2json.py
 
 
 
