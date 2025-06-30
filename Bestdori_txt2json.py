@@ -1,4 +1,4 @@
-# --- START OF FILE Bestdori_txt2json.py (WITH DRAG-AND-DROP) ---
+# --- START OF FILE Bestdori_txt2json.py (FULL FINAL VERSION) ---
 
 import json
 import re
@@ -13,16 +13,12 @@ import yaml
 import threading
 import sys
 
-# --- 修改1：安全地导入 tkinterdnd2 ---
+# 安全地导入 tkinterdnd2，如果失败则禁用拖拽功能
 try:
     from tkinterdnd2 import DND_FILES, TkinterDnD
     DND_ENABLED = True
 except ImportError:
     DND_ENABLED = False
-    # 如果导入失败，TkinterDnD 将不存在，后续代码会处理这种情况
-
-# (核心逻辑部分，从日志到 TextConverter，都无需任何修改)
-# --- [此处省略未修改的核心逻辑代码，与您提供的版本完全相同] ---
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,7 +93,6 @@ class ConfigManager:
             },
             "parsing": {
                 "max_speaker_name_length": 50,
-                "max_short_speaker_name_length": 6,
                 "default_narrator_name": " "
             },
             "patterns": {
@@ -250,17 +245,14 @@ class ModernConverterGUI:
         self.setup_gui()
     
     def setup_gui(self):
-        # --- 修改2：在创建GUI的第一步就决定使用哪个根窗口 ---
         if DND_ENABLED:
-            # 如果库已安装，使用支持拖拽的根窗口
             self.root = TkinterDnD.Tk()
             logger.info("tkinterdnd2已加载，拖拽功能已启用。")
         else:
-            # 否则，使用标准的Tkinter根窗口
             self.root = tk.Tk()
             logger.warning("tkinterdnd2未安装，拖拽功能不可用。请运行 'pip install tkinterdnd2' 来安装。")
             
-        self.root.title("文本转JSON转换器 v2.8 (拖拽支持)")
+        self.root.title("文本转JSON转换器 v2.9 (批量处理)")
         self.root.geometry("800x700")
         
         style = ttk.Style()
@@ -271,8 +263,6 @@ class ModernConverterGUI:
         self.root.columnconfigure(0, weight=1); self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
         
-        # ... (GUI布局代码无变化) ...
-        # ... [此处省略与上一版本完全相同的GUI控件布局代码] ...
         ttk.Label(main_frame, text="输入文本文件:").grid(row=0, column=0, sticky="w", pady=5)
         self.input_filepath_var = tk.StringVar()
         input_frame = ttk.Frame(main_frame)
@@ -280,6 +270,7 @@ class ModernConverterGUI:
         input_frame.columnconfigure(0, weight=1)
         ttk.Entry(input_frame, textvariable=self.input_filepath_var).grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(input_frame, text="浏览...", command=self.browse_input_file).grid(row=0, column=1)
+        
         ttk.Label(main_frame, text="输出JSON文件:").grid(row=1, column=0, sticky="w", pady=5)
         self.output_filepath_var = tk.StringVar()
         output_frame = ttk.Frame(main_frame)
@@ -287,17 +278,22 @@ class ModernConverterGUI:
         output_frame.columnconfigure(0, weight=1)
         ttk.Entry(output_frame, textvariable=self.output_filepath_var).grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(output_frame, text="浏览...", command=self.browse_output_file).grid(row=0, column=1)
+        
         ttk.Label(main_frame, text="旁白名称:").grid(row=2, column=0, sticky="w", pady=5)
         self.narrator_name_var = tk.StringVar(value=" ")
         ttk.Entry(main_frame, textvariable=self.narrator_name_var).grid(row=2, column=1, sticky=(tk.W, tk.E), pady=5)
+        
         self.quote_frame = ttk.LabelFrame(main_frame, text="引号处理选项", padding="10")
         self.quote_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
         self.quote_frame.columnconfigure(0, weight=1)
+
         preset_frame = ttk.Frame(self.quote_frame)
         preset_frame.grid(row=0, column=0, sticky="ew")
+        
         self.quote_category_vars = {}
         quotes_config = self.config_manager.get_quotes_config()
         quote_categories = quotes_config.get("quote_categories", {})
+        
         self.quote_col_count = 0
         for category_name in quote_categories.keys():
             var = tk.BooleanVar(value=True)
@@ -305,85 +301,224 @@ class ModernConverterGUI:
             chk.pack(side=tk.LEFT, padx=5, pady=5)
             self.quote_category_vars[category_name] = var
             self.quote_col_count += 1
+
         ttk.Separator(self.quote_frame, orient='horizontal').grid(row=1, column=0, sticky='ew', pady=10)
+
         custom_frame = ttk.Frame(self.quote_frame)
         custom_frame.grid(row=2, column=0, sticky="ew")
+
         ttk.Label(custom_frame, text="添加自定义引号对:").pack(side=tk.LEFT, padx=(0, 5))
+        
         self.custom_open_quote_var = tk.StringVar()
         open_entry = ttk.Entry(custom_frame, textvariable=self.custom_open_quote_var, width=5)
         open_entry.pack(side=tk.LEFT, padx=5)
+
         self.custom_close_quote_var = tk.StringVar()
         close_entry = ttk.Entry(custom_frame, textvariable=self.custom_close_quote_var, width=5)
         close_entry.pack(side=tk.LEFT, padx=5)
+        
         ttk.Button(custom_frame, text="➕ 添加", command=self.add_custom_quote).pack(side=tk.LEFT, padx=5)
+
         self.custom_quotes_display_frame = ttk.Frame(self.quote_frame)
         self.custom_quotes_display_frame.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.grid(row=4, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=10)
+        
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=5, column=0, columnspan=3, pady=10)
+        
         ttk.Button(button_frame, text="开始转换", command=self.start_conversion_threaded).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="批量处理...", command=self.open_batch_converter).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="预览结果", command=self.preview_result).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="配置管理", command=self.open_config_manager).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="测试引号", command=self.test_quote_processing).pack(side=tk.LEFT, padx=5)
+        
         self.status_var = tk.StringVar(value="就绪 - F1查看帮助 | 支持拖拽文件")
-        ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w").grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+        ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w").grid(
+            row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5
+        )
+        
         log_frame = ttk.LabelFrame(main_frame, text="转换日志", padding="5")
         log_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
-        log_frame.columnconfigure(0, weight=1); log_frame.rowconfigure(0, weight=1)
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
         main_frame.rowconfigure(7, weight=1)
+        
         self.log_text = tk.Text(log_frame, height=10, wrap=tk.WORD)
         scrollbar = ttk.Scrollbar(log_frame, orient=tk.VERTICAL, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=scrollbar.set)
+        
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
         self.setup_shortcuts()
-        # --- 修改3：在GUI设置的最后调用拖拽启用函数 ---
         self.enable_drag_drop()
 
-    # --- 新增4：添加您提供的拖拽相关方法 ---
+    def open_batch_converter(self):
+        batch_window = tk.Toplevel(self.root)
+        batch_window.title("批量转换")
+        batch_window.geometry("500x250")
+        batch_window.transient(self.root)
+        batch_window.grab_set()
+
+        frame = ttk.Frame(batch_window, padding="10")
+        frame.pack(fill=tk.BOTH, expand=True)
+        frame.columnconfigure(1, weight=1)
+
+        ttk.Label(frame, text="输入文件夹:").grid(row=0, column=0, sticky="w", pady=5, padx=5)
+        self.batch_input_dir_var = tk.StringVar()
+        ttk.Entry(frame, textvariable=self.batch_input_dir_var).grid(row=0, column=1, sticky="ew", pady=5)
+        ttk.Button(frame, text="浏览...", command=lambda: self.browse_directory(self.batch_input_dir_var)).grid(row=0, column=2, padx=5)
+
+        ttk.Label(frame, text="输出文件夹:").grid(row=1, column=0, sticky="w", pady=5, padx=5)
+        self.batch_output_dir_var = tk.StringVar()
+        ttk.Entry(frame, textvariable=self.batch_output_dir_var).grid(row=1, column=1, sticky="ew", pady=5)
+        ttk.Button(frame, text="浏览...", command=lambda: self.browse_directory(self.batch_output_dir_var)).grid(row=1, column=2, padx=5)
+
+        self.batch_progress_var = tk.DoubleVar()
+        self.batch_progress_bar = ttk.Progressbar(frame, variable=self.batch_progress_var, maximum=100)
+        self.batch_progress_bar.grid(row=2, column=0, columnspan=3, sticky="ew", pady=10)
+
+        self.batch_status_var = tk.StringVar(value="请选择输入和输出文件夹")
+        ttk.Label(frame, textvariable=self.batch_status_var).grid(row=3, column=0, columnspan=3, sticky="w", pady=5)
+        
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=4, column=0, columnspan=3, pady=10)
+        ttk.Button(btn_frame, text="开始批量转换", command=self.start_batch_conversion_threaded).pack(side=tk.LEFT, padx=10)
+        ttk.Button(btn_frame, text="关闭", command=batch_window.destroy).pack(side=tk.LEFT, padx=10)
+
+    def browse_directory(self, var_to_set):
+        directory = filedialog.askdirectory(title="请选择一个文件夹")
+        if directory:
+            var_to_set.set(directory)
+
+    def convert_file(self, input_path: str, output_path: str):
+        try:
+            narrator_name = self.narrator_name_var.get() or " "
+            selected_pairs = self._get_selected_quote_pairs()
+            self.log_message(f"开始处理: {Path(input_path).name}")
+            with open(input_path, 'r', encoding='utf-8') as f:
+                input_text = f.read()
+            json_output = self.converter.convert_text_to_json_format(
+                input_text, narrator_name, selected_quote_pairs=selected_pairs
+            )
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(json_output)
+            self.log_message(f"成功保存到: {Path(output_path).name}", "SUCCESS")
+            return True, "Success"
+        except Exception as e:
+            error_msg = f"处理文件 {Path(input_path).name} 失败: {e}"
+            self.log_message(error_msg, "ERROR")
+            return False, error_msg
+            
+    def start_conversion(self):
+        input_file = self.input_filepath_var.get()
+        output_file = self.output_filepath_var.get()
+        
+        if not input_file: return messagebox.showerror("错误", "请选择输入文件！")
+        if not output_file: return messagebox.showerror("错误", "请选择输出文件！")
+        
+        self.status_var.set("正在转换...")
+        self.progress_bar.grid()
+        self.progress_var.set(50)
+        
+        success, message = self.convert_file(input_file, output_file)
+        
+        self.progress_var.set(100)
+        if success:
+            self.status_var.set("转换完成！")
+            messagebox.showinfo("成功", "文件转换并保存成功！")
+        else:
+            self.status_var.set("转换失败！")
+            messagebox.showerror("错误", message)
+        
+        self.progress_var.set(0)
+        self.progress_bar.grid_remove()
+
+    def start_batch_conversion_threaded(self):
+        thread = threading.Thread(target=self.batch_convert)
+        thread.daemon = True
+        thread.start()
+
+    def batch_convert(self):
+        input_dir = self.batch_input_dir_var.get()
+        output_dir = self.batch_output_dir_var.get()
+
+        if not input_dir or not output_dir:
+            self.batch_status_var.set("错误: 输入和输出文件夹都必须选择！")
+            return
+
+        self.log_message("===== 开始批量处理 =====", "INFO")
+        self.log_message(f"输入目录: {input_dir}")
+        self.log_message(f"输出目录: {output_dir}")
+
+        try:
+            txt_files = list(Path(input_dir).glob("*.txt"))
+            if not txt_files:
+                self.batch_status_var.set("未在输入目录中找到任何.txt文件。")
+                self.log_message("警告: 未找到.txt文件。", "WARNING")
+                return
+
+            total_files = len(txt_files)
+            self.batch_progress_bar['maximum'] = total_files
+            self.batch_progress_var.set(0)
+            
+            success_count = 0
+            fail_count = 0
+
+            for i, txt_file in enumerate(txt_files):
+                self.batch_status_var.set(f"正在处理 ({i+1}/{total_files}): {txt_file.name}")
+                output_file = Path(output_dir) / f"{txt_file.stem}.json"
+                success, _ = self.convert_file(str(txt_file), str(output_file))
+                if success: success_count += 1
+                else: fail_count += 1
+                self.batch_progress_var.set(i + 1)
+
+            final_message = f"批量处理完成！成功: {success_count}, 失败: {fail_count}."
+            self.batch_status_var.set(final_message)
+            self.log_message(f"===== {final_message} =====", "INFO")
+            messagebox.showinfo("批量处理完成", final_message)
+
+        except Exception as e:
+            error_msg = f"批量处理过程中发生严重错误: {e}"
+            self.log_message(error_msg, "ERROR")
+            self.batch_status_var.set(error_msg)
+            messagebox.showerror("严重错误", error_msg)
+
     def enable_drag_drop(self):
-        """如果库已安装，则启用拖拽文件功能"""
         if DND_ENABLED:
             self.root.drop_target_register(DND_FILES)
             self.root.dnd_bind('<<Drop>>', self.on_file_drop)
 
     def on_file_drop(self, event):
-        """处理拖拽文件事件"""
-        # 使用tk.splitlist处理可能包含空格的文件路径
         try:
             filepaths = self.root.tk.splitlist(event.data)
             if filepaths:
-                # 只取第一个被拖拽的文件
                 dropped_file = filepaths[0]
                 self.input_filepath_var.set(dropped_file)
                 self.log_message(f"已通过拖拽加载文件: {dropped_file}")
-                # 自动填充输出文件名
                 if dropped_file.lower().endswith(".txt"):
                     output_path = Path(dropped_file).with_suffix(".json")
                     self.output_filepath_var.set(str(output_path))
         except Exception as e:
             self.log_message(f"拖拽文件处理失败: {e}", "ERROR")
 
-    # --- (setup_shortcuts, show_help, 和其他方法无变化) ---
     def setup_shortcuts(self):
-        """设置快捷键"""
         self.root.bind('<Control-o>', lambda e: self.browse_input_file())
         self.root.bind('<Control-s>', lambda e: self.browse_output_file())
         self.root.bind('<F5>', lambda e: self.start_conversion_threaded())
         self.root.bind('<F1>', lambda e: self.show_help())
     
     def show_help(self):
-        """显示帮助和快捷键信息"""
         help_title = "帮助 / 快捷键"
         help_message = """
-文本转JSON转换器 v2.8
+文本转JSON转换器 v2.9
 
 功能简介:
 本工具用于将特定格式的对话文本转换为JSON文件，
-支持拖拽文件、多种引号移除和自定义角色配置。
+支持批量处理、拖拽文件、多种引号移除和自定义角色配置。
 
 快捷键列表:
   - Ctrl + O:   打开文件选择框，选择输入文件。
@@ -419,7 +554,6 @@ class ModernConverterGUI:
         filename = filedialog.askopenfilename(title="选择输入文本文件", filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")])
         if filename: 
             self.input_filepath_var.set(filename)
-            # 拖拽时已经做了自动填充，这里也加上
             if filename.lower().endswith(".txt"):
                 output_path = Path(filename).with_suffix(".json")
                 self.output_filepath_var.set(str(output_path))
@@ -429,7 +563,20 @@ class ModernConverterGUI:
         if filename: self.output_filepath_var.set(filename)
     
     def log_message(self, message: str, level: str = "INFO"):
-        self.log_text.insert(tk.END, f"[{level}] {message}\n"); self.log_text.see(tk.END); self.root.update_idletasks()
+        tag = level.upper()
+        # 为不同级别的日志添加颜色标签
+        if tag == "SUCCESS":
+            self.log_text.tag_config("SUCCESS", foreground="green")
+        elif tag == "ERROR":
+            self.log_text.tag_config("ERROR", foreground="red")
+        elif tag == "WARNING":
+            self.log_text.tag_config("WARNING", foreground="orange")
+        elif tag == "HEADER":
+            self.log_text.tag_config("HEADER", font=("TkDefaultFont", 10, "bold"))
+        
+        self.log_text.insert(tk.END, f"[{level}] {message}\n", tag)
+        self.log_text.see(tk.END)
+        self.root.update_idletasks()
     
     def test_quote_processing(self):
         test_window = tk.Toplevel(self.root); test_window.title("引号处理测试"); test_window.geometry("500x400")
@@ -449,29 +596,6 @@ class ModernConverterGUI:
     
     def start_conversion_threaded(self):
         thread = threading.Thread(target=self.start_conversion); thread.daemon = True; thread.start()
-    
-    def start_conversion(self):
-        input_file = self.input_filepath_var.get(); output_file = self.output_filepath_var.get(); narrator_name = self.narrator_name_var.get() or " "
-        selected_pairs = self._get_selected_quote_pairs()
-        if not input_file: return messagebox.showerror("错误", "请选择输入文件！")
-        if not output_file: return messagebox.showerror("错误", "请选择输出文件！")
-        try:
-            self.status_var.set("正在读取文件..."); self.progress_var.set(10); self.log_message("开始读取输入文件...")
-            with open(input_file, 'r', encoding='utf-8') as f: input_text = f.read()
-            self.progress_var.set(30); self.log_message(f"成功读取文件，共{len(input_text)}个字符")
-            self.status_var.set("正在转换文本..."); self.progress_var.set(50); self.log_message(f"开始转换文本... (根据UI选项移除引号)")
-            json_output = self.converter.convert_text_to_json_format(input_text, narrator_name, selected_quote_pairs=selected_pairs)
-            self.progress_var.set(80); self.log_message("文本转换完成")
-            self.status_var.set("正在保存文件..."); 
-            with open(output_file, 'w', encoding='utf-8') as f: f.write(json_output)
-            self.progress_var.set(100); self.status_var.set("转换完成！"); self.log_message("文件保存成功！")
-            messagebox.showinfo("成功", "文件转换并保存成功！")
-        except FileNotFoundError:
-            error_msg = f"找不到输入文件: {input_file}"; self.log_message(error_msg, "ERROR"); messagebox.showerror("错误", error_msg)
-        except Exception as e:
-            error_msg = f"转换过程中发生错误: {str(e)}"; self.log_message(error_msg, "ERROR"); messagebox.showerror("错误", error_msg)
-        finally:
-            self.progress_var.set(0)
     
     def preview_result(self):
         input_file = self.input_filepath_var.get(); narrator_name = self.narrator_name_var.get() or " "
