@@ -24,7 +24,7 @@ Bestdori_txt2json 是一个用于把剧情 TXT 格式数据转换为在 Bestdori
 
 ```bash
 python Bestdori_txt2json.py
-
+```
 
 
 ## 依赖环境
