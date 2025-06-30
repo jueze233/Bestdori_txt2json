@@ -1,4 +1,4 @@
-# --- START OF FILE Bestdori_txt2json.py (WITH SHORTCUTS) ---
+# --- START OF FILE Bestdori_txt2json.py (WITH DRAG-AND-DROP) ---
 
 import json
 import re
@@ -12,6 +12,14 @@ from tkinter import filedialog, messagebox, ttk
 import yaml
 import threading
 import sys
+
+# --- 修改1：安全地导入 tkinterdnd2 ---
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    DND_ENABLED = True
+except ImportError:
+    DND_ENABLED = False
+    # 如果导入失败，TkinterDnD 将不存在，后续代码会处理这种情况
 
 # (核心逻辑部分，从日志到 TextConverter，都无需任何修改)
 # --- [此处省略未修改的核心逻辑代码，与您提供的版本完全相同] ---
@@ -242,8 +250,17 @@ class ModernConverterGUI:
         self.setup_gui()
     
     def setup_gui(self):
-        self.root = tk.Tk()
-        self.root.title("文本转JSON转换器 v2.7 (快捷键支持)")
+        # --- 修改2：在创建GUI的第一步就决定使用哪个根窗口 ---
+        if DND_ENABLED:
+            # 如果库已安装，使用支持拖拽的根窗口
+            self.root = TkinterDnD.Tk()
+            logger.info("tkinterdnd2已加载，拖拽功能已启用。")
+        else:
+            # 否则，使用标准的Tkinter根窗口
+            self.root = tk.Tk()
+            logger.warning("tkinterdnd2未安装，拖拽功能不可用。请运行 'pip install tkinterdnd2' 来安装。")
+            
+        self.root.title("文本转JSON转换器 v2.8 (拖拽支持)")
         self.root.geometry("800x700")
         
         style = ttk.Style()
@@ -255,6 +272,7 @@ class ModernConverterGUI:
         main_frame.columnconfigure(1, weight=1)
         
         # ... (GUI布局代码无变化) ...
+        # ... [此处省略与上一版本完全相同的GUI控件布局代码] ...
         ttk.Label(main_frame, text="输入文本文件:").grid(row=0, column=0, sticky="w", pady=5)
         self.input_filepath_var = tk.StringVar()
         input_frame = ttk.Frame(main_frame)
@@ -309,7 +327,7 @@ class ModernConverterGUI:
         ttk.Button(button_frame, text="预览结果", command=self.preview_result).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="配置管理", command=self.open_config_manager).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="测试引号", command=self.test_quote_processing).pack(side=tk.LEFT, padx=5)
-        self.status_var = tk.StringVar(value="就绪 - F1查看帮助")
+        self.status_var = tk.StringVar(value="就绪 - F1查看帮助 | 支持拖拽文件")
         ttk.Label(main_frame, textvariable=self.status_var, relief=tk.SUNKEN, anchor="w").grid(row=6, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
         log_frame = ttk.LabelFrame(main_frame, text="转换日志", padding="5")
         log_frame.grid(row=7, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
@@ -321,30 +339,51 @@ class ModernConverterGUI:
         self.log_text.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         
-        # --- 修改1：在GUI设置的最后调用快捷键设置函数 ---
         self.setup_shortcuts()
+        # --- 修改3：在GUI设置的最后调用拖拽启用函数 ---
+        self.enable_drag_drop()
 
-    # --- 新增2：定义快捷键设置函数 ---
+    # --- 新增4：添加您提供的拖拽相关方法 ---
+    def enable_drag_drop(self):
+        """如果库已安装，则启用拖拽文件功能"""
+        if DND_ENABLED:
+            self.root.drop_target_register(DND_FILES)
+            self.root.dnd_bind('<<Drop>>', self.on_file_drop)
+
+    def on_file_drop(self, event):
+        """处理拖拽文件事件"""
+        # 使用tk.splitlist处理可能包含空格的文件路径
+        try:
+            filepaths = self.root.tk.splitlist(event.data)
+            if filepaths:
+                # 只取第一个被拖拽的文件
+                dropped_file = filepaths[0]
+                self.input_filepath_var.set(dropped_file)
+                self.log_message(f"已通过拖拽加载文件: {dropped_file}")
+                # 自动填充输出文件名
+                if dropped_file.lower().endswith(".txt"):
+                    output_path = Path(dropped_file).with_suffix(".json")
+                    self.output_filepath_var.set(str(output_path))
+        except Exception as e:
+            self.log_message(f"拖拽文件处理失败: {e}", "ERROR")
+
+    # --- (setup_shortcuts, show_help, 和其他方法无变化) ---
     def setup_shortcuts(self):
         """设置快捷键"""
         self.root.bind('<Control-o>', lambda e: self.browse_input_file())
         self.root.bind('<Control-s>', lambda e: self.browse_output_file())
         self.root.bind('<F5>', lambda e: self.start_conversion_threaded())
         self.root.bind('<F1>', lambda e: self.show_help())
-        # 在macOS上，Control-s通常是保存，Command-s才是。可以添加兼容性绑定
-        # self.root.bind('<Command-o>', lambda e: self.browse_input_file())
-        # self.root.bind('<Command-s>', lambda e: self.browse_output_file())
     
-    # --- 新增3：定义帮助信息显示函数 ---
     def show_help(self):
         """显示帮助和快捷键信息"""
         help_title = "帮助 / 快捷键"
         help_message = """
-文本转JSON转换器 v2.7
+文本转JSON转换器 v2.8
 
 功能简介:
 本工具用于将特定格式的对话文本转换为JSON文件，
-支持多种引号移除和自定义角色配置。
+支持拖拽文件、多种引号移除和自定义角色配置。
 
 快捷键列表:
   - Ctrl + O:   打开文件选择框，选择输入文件。
@@ -378,7 +417,12 @@ class ModernConverterGUI:
     
     def browse_input_file(self):
         filename = filedialog.askopenfilename(title="选择输入文本文件", filetypes=[("文本文件", "*.txt"), ("所有文件", "*.*")])
-        if filename: self.input_filepath_var.set(filename)
+        if filename: 
+            self.input_filepath_var.set(filename)
+            # 拖拽时已经做了自动填充，这里也加上
+            if filename.lower().endswith(".txt"):
+                output_path = Path(filename).with_suffix(".json")
+                self.output_filepath_var.set(str(output_path))
     
     def browse_output_file(self):
         filename = filedialog.asksaveasfilename(title="保存JSON文件", defaultextension=".json", filetypes=[("JSON文件", "*.json"), ("所有文件", "*.*")])
